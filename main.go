@@ -2,39 +2,26 @@ package main
 
 import (
 	"bufio"
+	"encoding/base64"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
 
 	proto "github.com/golang/protobuf/proto"
+	log "github.com/sirupsen/logrus"
 	context "golang.org/x/net/context"
 
-	wrapping "github.com/hashicorp/go-kms-wrapping"
-	"github.com/hashicorp/go-kms-wrapping/wrappers/azurekeyvault"
-	"github.com/hashicorp/go-kms-wrapping/wrappers/gcpckms"
-	"github.com/hashicorp/go-kms-wrapping/wrappers/awskms"
-
-	"encoding/base64"
-	"encoding/json"
-
+	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
+	awskms "github.com/hashicorp/go-kms-wrapping/wrappers/awskms/v2"
+	azurekeyvault "github.com/hashicorp/go-kms-wrapping/wrappers/azurekeyvault/v2"
+	gcpckms "github.com/hashicorp/go-kms-wrapping/wrappers/gcpckms/v2"
+	transit "github.com/hashicorp/go-kms-wrapping/wrappers/transit/v2"
 	"github.com/hashicorp/vault/shamir"
-	log "github.com/sirupsen/logrus"
 )
 
 const (
-	//GCP
-	gcpckmsProjectID  = "rodrigo-support"
-	gcpckmsLocationID = "global"
-	gcpckmsKeyRing    = "vault"
-	gcpckmsCryptoKey  = "vault-unsealer"
-	/*Azure
-	AZURE_TENANT_ID
-	AZURE_CLIENT_ID
-	AZURE_CLIENT_SECRET
-	AZUREKEYVAULT_WRAPPER_VAULT_NAME
-	AZUREKEYVAULT_WRAPPER_KEY_NAME
-	*/
-	version = "0.2"
+	version = "0.3"
 )
 
 func main() {
@@ -66,48 +53,33 @@ func main() {
 	}
 	var wrapper wrapping.Wrapper
 
+	log.Infof("Setting up for %s", *cloud)
 	switch *cloud {
 	case "gcpckms":
-		wrapper, err = getWrapperGcp()
+		wrapper = gcpckms.NewWrapper()
 	case "azurekeyvault":
-		wrapper, err = getWrapperAzure()
+		wrapper = azurekeyvault.NewWrapper()
 	case "awskms":
-		wrapper, err = getWrapperAws()
+		wrapper = awskms.NewWrapper()
+	case "transit":
+		wrapper = transit.NewWrapper()
 	default:
 		log.Fatalf("Environment not implemented: %s", *cloud)
-
 	}
-	/* 	message EncryptedBlobInfo {
-		// Ciphertext is the encrypted bytes
-	    bytes ciphertext = 1;
-
-		// IV is the initialization value used during encryption
-	    bytes iv  = 2;
-
-		// HMAC is the bytes of the HMAC, if any
-	    bytes hmac = 3;
-
-		// Wrapped can be used by the client to indicate whether Ciphertext
-		// actually contains wrapped data or not. This can be useful if you want to
-		// reuse the same struct to pass data along before and after wrapping.
-	    bool wrapped = 4;
-
-		// KeyInfo contains information about the key that was used to create this value
-	    KeyInfo key_info = 5;
-
-		// ValuePath can be used by the client to store information about where the
-		// value came from
-	    string ValuePath = 6;
+	_, err = wrapper.SetConfig(nil)
+	if err != nil {
+		log.Fatalf("SetConfig failed: %s", err)
 	}
-	*/
-	blobInfo := &wrapping.EncryptedBlobInfo{}
+	blobInfo := &wrapping.BlobInfo{}
 	if err := proto.Unmarshal(env, blobInfo); err != nil {
 		log.Errorf("failed to proto decode stored keys: %s", err)
 		return
 	}
-	blobStr := prettyPrint(blobInfo)
+	blobStr, err := json.MarshalIndent(blobInfo, "", "\t")
+	if err != nil {
+		log.Fatalf("failed to marshall blobInfo: %s", err)
+	}
 	log.Debugf("blobInfo=%s", blobStr)
-
 	pt, err := wrapper.Decrypt(context.Background(), blobInfo, nil)
 	if err != nil {
 		log.Errorf("failed to decrypt encrypted stored keys: %s", err)
@@ -128,50 +100,9 @@ func main() {
 			fmt.Printf("%s\n", base64.StdEncoding.EncodeToString(share))
 		}
 	}
-
-}
-
-func getWrapperAws() (wrapping.Wrapper,error) {
-	log.Infof("Setting up for awskms")
-	s := awskms.NewWrapper(nil)
-	_, err := s.SetConfig(nil)
-	if err != nil {
-		return nil, err
-	}
-	return s, nil
-}
-
-
-func getWrapperGcp() (wrapping.Wrapper, error) {
-	log.Infof("Setting up for gcpckms")
-	gcpCheckAndSetEnvVars()
-	config := map[string]string{
-		"credentials": os.Getenv("GOOGLE_APPLICATION_CREDENTIALS"),
-	}
-
-	// Do an error check before env vars are set
-	s := gcpckms.NewWrapper(nil)
-	_, err := s.SetConfig(config)
-	if err != nil {
-		return nil, err
-	}
-
-	return s, nil
-}
-func getWrapperAzure() (wrapping.Wrapper, error) {
-	log.Infof("Setting up for azurekeyvault")
-
-	s := azurekeyvault.NewWrapper(nil)
-	_, err := s.SetConfig(nil)
-	if err != nil {
-		return nil, err
-	}
-	return s, nil
-
 }
 func readBin(filename string) ([]byte, error) {
 	file, err := os.Open(filename)
-
 	if err != nil {
 		return nil, err
 	}
@@ -191,35 +122,3 @@ func readBin(filename string) ([]byte, error) {
 	return bytes, err
 }
 
-func prettyPrint(i interface{}) string {
-	s, _ := json.MarshalIndent(i, "", "\t")
-	return string(s)
-}
-func gcpCheckAndSetEnvVars() {
-
-	if os.Getenv("GOOGLE_APPLICATION_CREDENTIALS") == "" && os.Getenv(gcpckms.EnvGCPCKMSWrapperCredsPath) == "" {
-		log.Fatal("unable to get GCP credentials via environment variables")
-	}
-
-	if os.Getenv(gcpckms.EnvGCPCKMSWrapperProject) == "" {
-		os.Setenv(gcpckms.EnvGCPCKMSWrapperProject, gcpckmsProjectID)
-	}
-
-	if os.Getenv(gcpckms.EnvGCPCKMSWrapperLocation) == "" {
-		os.Setenv(gcpckms.EnvGCPCKMSWrapperLocation, gcpckmsLocationID)
-	}
-
-	if os.Getenv(gcpckms.EnvVaultGCPCKMSSealKeyRing) == "" {
-		os.Setenv(gcpckms.EnvVaultGCPCKMSSealKeyRing, gcpckmsKeyRing)
-	}
-	if os.Getenv(gcpckms.EnvGCPCKMSWrapperKeyRing) == "" {
-		os.Setenv(gcpckms.EnvGCPCKMSWrapperKeyRing, gcpckmsKeyRing)
-	}
-
-	if os.Getenv(gcpckms.EnvVaultGCPCKMSSealCryptoKey) == "" {
-		os.Setenv(gcpckms.EnvVaultGCPCKMSSealCryptoKey, gcpckmsCryptoKey)
-	}
-	if os.Getenv(gcpckms.EnvGCPCKMSWrapperCryptoKey) == "" {
-		os.Setenv(gcpckms.EnvGCPCKMSWrapperCryptoKey, gcpckmsCryptoKey)
-	}
-}
