@@ -26,17 +26,17 @@ Currently only support GCP, Azure KMS and AWS KMS.
 
 It needs access to the KMS service which your Vault was configured with.
 
-# Environmental variables for GCP
-Example, if you KMS setup is: `projects/rodrigo-support/locations/global/keyRings/vault/cryptoKeys/vault-unsealer/cryptoKeyVersions/1`
+# Environment variables for GCP
+Example, if your KMS setup is: `projects/rodrigo-support/locations/global/keyRings/vault/cryptoKeys/vault-unsealer/cryptoKeyVersions/1`
 
 ```sh
-$ export "GOOGLE_CREDENTIALS" = "service-account.json"
-$ export "GOOGLE_PROJECT" = "rodrigo-support"
-$ export "GOOGLE_REGION" = "global"
-$ export "GCPCKMS_WRAPPER_KEY_RING" = "vault"
-$ export "GCPCKMS_WRAPPER_CRYPTO_KEY" = "vault-unsealer"
+$ export GOOGLE_CREDENTIALS="service-account.json"
+$ export GOOGLE_PROJECT="rodrigo-support"
+$ export GOOGLE_REGION="global"
+$ export GCPCKMS_WRAPPER_KEY_RING="vault"
+$ export GCPCKMS_WRAPPER_CRYPTO_KEY="vault-unsealer"
 ```
-# Environmental variables for AZURE
+# Environment variables for AZURE
 If your Vault configuration is:
 
 ```
@@ -50,21 +50,35 @@ seal "azurekeyvault" {
 ```
 
 ```sh
-$ export "AZURE_TENANT_ID" = "YOUR-AZURE-TENANT-ID"
-$ export "AZURE_CLIENT_ID" = "YOUR-APP-ID"
-$ export "AZURE_CLIENT_SECRET" = "YOUR-APP-PASSWORD"
-$ export "VAULT_AZUREKEYVAULT_VAULT_NAME" = "rodrigo-key-vault"
-$ export "VAULT_AZUREKEYVAULT_KEY_NAME" = "generated-key"
+$ export AZURE_TENANT_ID="YOUR-AZURE-TENANT-ID"
+$ export AZURE_CLIENT_ID="YOUR-APP-ID"
+$ export AZURE_CLIENT_SECRET="YOUR-APP-PASSWORD"
+$ export VAULT_AZUREKEYVAULT_VAULT_NAME="rodrigo-key-vault"
+$ export VAULT_AZUREKEYVAULT_KEY_NAME="generated-key"
 ```
 
-# Environmental variables for AWS KMS
+# Environment variables for AWS KMS
 
 ```sh
-export AWS_ACCESS_KEY_ID = "YOUR_ACCESS_KEY_ID_HERE"
-export AWS_SECRET_ACCESS_KEY = "YOUR_SECRET_ID_HERE"
-export AWS_SESSION_TOKEN = "YOUR_SESSION_TOKEN_HERE" (this one is optional, if STS creds are used)
-export AWSKMS_WRAPPER_KEY_ID = "YOUR_KMS_KEY_ID_HERE" (the KMS used in the Vault HCL config)
+export AWS_ACCESS_KEY_ID="YOUR_ACCESS_KEY_ID_HERE"
+export AWS_SECRET_ACCESS_KEY="YOUR_SECRET_ID_HERE"
+export AWS_SESSION_TOKEN="YOUR_SESSION_TOKEN_HERE" (this one is optional, if STS creds are used)
+export AWSKMS_WRAPPER_KEY_ID="YOUR_KMS_KEY_ID_HERE" (the KMS used in the Vault HCL config)
 ```
+
+# Environment variables for Transit Autounseal
+
+```sh
+export VAULT_ADDR="ADDR_OF_VAULT_CLUSTER_USED_FOR_UNSEAL_HERE"
+export VAULT_TOKEN="TOKEN_USED_TO_AUTOUNSEAL_VAULT_HERE"
+export VAULT_TRANSIT_SEAL_KEY_NAME="KEY_USED_TO_AUTOUNSEAL_VAULT_HERE"
+export VAULT_TRANSIT_SEAL_MOUNT_PATH="PATH_TO_TRANSIT_MOUNT_USED_TO_AUTOUNSEAL_VAULT_HERE"
+export VAULT_NAMESPACE="NAMESPACE_NAME_HERE_IF_APPLICABLE" (OPTIONAL)
+export VAULT_CACERT="CA_CERT_HERE_IF_APPLICABLE" (OPTIONAL)
+export VAULT_CLIENT_CERT="CLIENT_CERT_HERE_IF_APPLICABLE" (OPTIONAL)
+export VAULT_CLIENT_KEY="CLIENT_KEY_HERE_IF_APPLICABLE" (OPTIONAL)
+export VAULT_TLS_SERVER_NAME="TLS_SERVER_NAME_HERE_IF_APPLICABLE" (OPTIONAL)
+export VAULT_SKIP_VERIFY="FALSE_IF_USING_TLS_DEFAULTS_TO_FALSE" (OPTIONAL)
 
 ## Encrypted recovery keys dump
 ### From a file storage:
