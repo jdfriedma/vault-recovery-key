@@ -179,4 +179,4 @@ $ export GCPCKMS_WRAPPER_KEY_RING="name-of-keyring-goes-here"
 $ export GCPCKMS_WRAPPER_CRYPTO_KEY="name-of-vault-unseal-key-from-keyring-goes-here"
 ```
 # Additional information
-Tested and verified to work against Vault 1.8.1 and 1.9.3 using `gcpckms` Auto-Unseal.
+Tested and verified to work against Vault 1.8.1 and 1.9.3 using `gcpckms`, `transit` and `awskms` Auto-Unseal mechanisms.
