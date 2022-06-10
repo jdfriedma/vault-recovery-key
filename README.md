@@ -22,7 +22,7 @@ Usage of ./vault-recover-key:
     	Threshold number of keys needed for shamir creation (default 1)
 ```
 # Limitations
-Currently only support GCP, Azure KMS and AWS KMS.
+This utility currently only supports Transit Autounseal, GCP, Azure KMS and AWS KMS.
 
 It needs access to the KMS service which your Vault was configured with.
 
