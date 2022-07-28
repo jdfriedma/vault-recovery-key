@@ -11,7 +11,7 @@ Download the binary from [releases](https://github.com/bruj0/vault-recovery-key/
 
 # Usage
 ```
-Usage of ./vault-recover-key:
+Usage of ./vault-recovery-key:
   -enc-key string
     	Path to the encrypted recovery keys from the storage, found at core/_recovery-key (default "key.enc")
   -env string
